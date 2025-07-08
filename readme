@@ -1,8 +1,0 @@
-Turbo Your 
-Strava results 
-
-
-
-To use this script, make sure you have the gpxpy library installed. You can install it using pip install gpxpy. Then, save the script to a Python file, run it, and follow the prompts to provide the GPX file path and the desired percentage increase. The modified GPX file will be saved as <original_file_name>_modified.gpx in the same directory as the original file.
-
-Please note that this script assumes that the GPX file contains tracks and segments. If your GPX file has a different structure, you might need to modify the script accordingly.
