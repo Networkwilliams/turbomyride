@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPX Time Adjuster</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        input[type="number"] {
+            max-width: 200px;
+        }
+        .submit-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        .submit-btn:hover {
+            background-color: #0056b3;
+        }
+        .submit-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .download-btn:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GPX Time Adjuster</h1>
+        
+        <div class="info">
+            <strong>How it works:</strong>
+            <ul>
+                <li>Upload your GPX file</li>
+                <li>Enter a percentage to adjust the timing</li>
+                <li>Positive values make it faster (10% = 10% faster completion)</li>
+                <li>Negative values make it slower (-10% = 10% slower completion)</li>
+            </ul>
+        </div>
+
+        <form id="gpxForm" enctype="multipart/form-data" method="POST">
+            <div class="form-group">
+                <label for="gpxFile">Choose GPX File:</label>
+                <input type="file" id="gpxFile" name="gpxFile" accept=".gpx" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="percentage">Percentage Change:</label>
+                <input type="number" id="percentage" name="percentage" step="0.1" 
+                       placeholder="e.g., 10 for 10% faster, -5 for 5% slower" required>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Adjust GPX Timing
+            </button>
+        </form>
+
+        <div id="loading" class="loading" style="display: none;">
+            <p>Processing your GPX file...</p>
+        </div>
+
+        <div id="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('gpxForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            fetch('/process', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                
+                if (data.success) {
+                    result.className = 'result';
+                    result.innerHTML = `
+                        <h3>Success!</h3>
+                        <p><strong>Original Duration:</strong> ${data.original_duration}</p>
+                        <p><strong>New Duration:</strong> ${data.new_duration}</p>
+                        <p><strong>Change:</strong> ${data.percentage}%</p>
+                        <a href="/download/${data.filename}" class="download-btn">Download Modified GPX</a>
+                    `;
+                } else {
+                    result.className = 'result error';
+                    result.innerHTML = `<h3>Error</h3><p>${data.error}</p>`;
+                }
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+                result.className = 'result error';
+                result.innerHTML = `<h3>Error</h3><p>An error occurred while processing your file.</p>`;
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
