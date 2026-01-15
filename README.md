@@ -63,6 +63,16 @@ Processed files are saved in the `outputs/` directory with descriptive filenames
 - `adjusted_20.0pct_faster_from_98.0min_for_5.0min_xxxxx.gpx`
 - `datetime_changed_20240809_0111_xxxxx.gpx`
 
+## Security & Privacy
+
+- GPX files and output directories are excluded from version control via `.gitignore`
+- Uploaded files are automatically cleaned up after processing
+- All file processing happens locally on your server
+
 ## Note
 
 This is a development server. For production deployment, use a production WSGI server like gunicorn or waitress.
+
+## License
+
+MIT License
