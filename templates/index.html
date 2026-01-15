@@ -104,6 +104,7 @@
             <strong>How it works:</strong>
             <ul>
                 <li>Upload your GPX file</li>
+                <li>Choose adjustment mode</li>
                 <li>Enter a percentage to adjust the timing</li>
                 <li>Positive values make it faster (10% = 10% faster completion)</li>
                 <li>Negative values make it slower (-10% = 10% slower completion)</li>
@@ -115,13 +116,51 @@
                 <label for="gpxFile">Choose GPX File:</label>
                 <input type="file" id="gpxFile" name="gpxFile" accept=".gpx" required>
             </div>
-            
+
             <div class="form-group">
+                <label>Adjustment Mode:</label>
+                <div style="margin-top: 10px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: normal;">
+                        <input type="radio" name="adjustmentMode" value="1" checked style="width: auto; margin-right: 5px;">
+                        Option 1: Adjust the entire GPX file
+                    </label>
+                    <label style="display: block; margin-bottom: 10px; font-weight: normal;">
+                        <input type="radio" name="adjustmentMode" value="2" style="width: auto; margin-right: 5px;">
+                        Option 2: Adjust from a specific time onwards
+                    </label>
+                    <label style="display: block; font-weight: normal;">
+                        <input type="radio" name="adjustmentMode" value="3" style="width: auto; margin-right: 5px;">
+                        Option 3: Change the start date and time
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="startOffsetGroup" style="display: none;">
+                <label for="startOffset">Start Time (minutes from beginning):</label>
+                <input type="number" id="startOffset" name="startOffset" step="0.1" min="0"
+                       placeholder="e.g., 7 to start adjusting at 7 minutes">
+            </div>
+
+            <div class="form-group" id="durationGroup" style="display: none;">
+                <label for="duration">Duration (minutes):</label>
+                <input type="number" id="duration" name="duration" step="0.1" min="0"
+                       placeholder="e.g., 4 to adjust for 4 minutes">
+                <small style="display: block; color: #666; margin-top: 5px;">Leave empty to adjust from start time to end of file</small>
+            </div>
+
+            <div class="form-group" id="newDateTimeGroup" style="display: none;">
+                <label for="newDate">New Start Date:</label>
+                <input type="date" id="newDate" name="newDate" style="max-width: 200px; margin-bottom: 10px;">
+                <label for="newTime">New Start Time:</label>
+                <input type="time" id="newTime" name="newTime" style="max-width: 200px;">
+            </div>
+
+            <div class="form-group" id="percentageGroup">
                 <label for="percentage">Percentage Change:</label>
-                <input type="number" id="percentage" name="percentage" step="0.1" 
+                <input type="number" id="percentage" name="percentage" step="0.1"
                        placeholder="e.g., 10 for 10% faster, -5 for 5% slower" required>
             </div>
-            
+
             <button type="submit" class="submit-btn" id="submitBtn">
                 Adjust GPX Timing
             </button>
@@ -135,18 +174,65 @@
     </div>
 
     <script>
+        // Toggle fields visibility based on selected mode
+        const modeRadios = document.querySelectorAll('input[name="adjustmentMode"]');
+        const startOffsetGroup = document.getElementById('startOffsetGroup');
+        const startOffsetInput = document.getElementById('startOffset');
+        const durationGroup = document.getElementById('durationGroup');
+        const newDateTimeGroup = document.getElementById('newDateTimeGroup');
+        const newDateInput = document.getElementById('newDate');
+        const newTimeInput = document.getElementById('newTime');
+        const percentageGroup = document.getElementById('percentageGroup');
+        const percentageInput = document.getElementById('percentage');
+
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === '1') {
+                    // Mode 1: Adjust entire file
+                    startOffsetGroup.style.display = 'none';
+                    durationGroup.style.display = 'none';
+                    newDateTimeGroup.style.display = 'none';
+                    percentageGroup.style.display = 'block';
+                    startOffsetInput.required = false;
+                    newDateInput.required = false;
+                    newTimeInput.required = false;
+                    percentageInput.required = true;
+                } else if (this.value === '2') {
+                    // Mode 2: Adjust from specific time
+                    startOffsetGroup.style.display = 'block';
+                    durationGroup.style.display = 'block';
+                    newDateTimeGroup.style.display = 'none';
+                    percentageGroup.style.display = 'block';
+                    startOffsetInput.required = true;
+                    newDateInput.required = false;
+                    newTimeInput.required = false;
+                    percentageInput.required = true;
+                } else if (this.value === '3') {
+                    // Mode 3: Change date/time
+                    startOffsetGroup.style.display = 'none';
+                    durationGroup.style.display = 'none';
+                    newDateTimeGroup.style.display = 'block';
+                    percentageGroup.style.display = 'none';
+                    startOffsetInput.required = false;
+                    newDateInput.required = true;
+                    newTimeInput.required = true;
+                    percentageInput.required = false;
+                }
+            });
+        });
+
         document.getElementById('gpxForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(this);
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
-            
+
             submitBtn.disabled = true;
             loading.style.display = 'block';
             result.style.display = 'none';
-            
+
             fetch('/process', {
                 method: 'POST',
                 body: formData
@@ -155,14 +241,37 @@
             .then(data => {
                 loading.style.display = 'none';
                 result.style.display = 'block';
-                
+
                 if (data.success) {
                     result.className = 'result';
+                    let detailsHtml = '';
+
+                    if (data.original_start !== null && data.new_start !== null) {
+                        // Mode 3: Date/time change
+                        detailsHtml = `
+                            <p><strong>Original Start:</strong> ${data.original_start}</p>
+                            <p><strong>New Start:</strong> ${data.new_start}</p>
+                            <p><strong>Duration:</strong> ${data.original_duration}</p>
+                        `;
+                    } else {
+                        // Mode 1 or 2: Percentage adjustment
+                        detailsHtml = `
+                            <p><strong>Original Duration:</strong> ${data.original_duration}</p>
+                            <p><strong>New Duration:</strong> ${data.new_duration}</p>
+                            <p><strong>Change:</strong> ${data.percentage}%</p>
+                        `;
+
+                        if (data.start_offset !== null && data.start_offset !== undefined) {
+                            detailsHtml += `<p><strong>Adjustment Started At:</strong> ${data.start_offset} minutes</p>`;
+                            if (data.duration !== null && data.duration !== undefined) {
+                                detailsHtml += `<p><strong>Adjustment Duration:</strong> ${data.duration} minutes</p>`;
+                            }
+                        }
+                    }
+
                     result.innerHTML = `
                         <h3>Success!</h3>
-                        <p><strong>Original Duration:</strong> ${data.original_duration}</p>
-                        <p><strong>New Duration:</strong> ${data.new_duration}</p>
-                        <p><strong>Change:</strong> ${data.percentage}%</p>
+                        ${detailsHtml}
                         <a href="/download/${data.filename}" class="download-btn">Download Modified GPX</a>
                     `;
                 } else {
